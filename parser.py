@@ -227,47 +227,60 @@ class MidiFile():
 
     @classmethod
     def parseTracks(cls, tracksCount, memoryMap):
-        return [MidiTrack(memoryMap) for i in range(tracksCount)]
+        return [MidiTrack.fromMemoryMap(memoryMap) for i in range(tracksCount)]
+
+runningStatus = 0
 
 class MidiTrack():
-    def __init__(self, memoryMap):
-        self.events = []
-        self.runningStatus = 0
+    def __init__(self, events):
+        self.events = events
 
-        self.parseHeader(memoryMap)
-        self.parseEvents(memoryMap)
+    @classmethod
+    def fromMemoryMap(cls, memoryMap):
+        chunkLength = cls.parseHeader(memoryMap)
+        events = cls.parseEvents(memoryMap)
+        return cls(events)
 
-    def parseHeader(self, memoryMap):
+    @classmethod
+    def parseHeader(cls, memoryMap):
         identifier = memoryMap.read(4).decode('ascii')
-        self.chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
+        chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
+        return chunkLength
 
-    def parseEvents(self, memoryMap):
+    @classmethod
+    def parseEvents(cls, memoryMap):
+        events = []
         while True:
-            event = self.parseEvent(memoryMap)
-            self.events.append(event)
+            event = cls.parseEvent(memoryMap)
+            events.append(event)
             if isinstance(event, EndOfTrackEvent): break
+        return events
 
-    def parseEvent(self, memoryMap):
+    @classmethod
+    def parseEvent(cls, memoryMap):
         deltaTime = unpackVLQ(memoryMap)
         status = struct.unpack("B", memoryMap.read(1))[0]
         
-        if status & 0x80: self.runningStatus = status
+        global runningStatus
+        if status & 0x80: runningStatus = status
         else: memoryMap.seek(-1, os.SEEK_CUR)
 
-        if self.runningStatus == 0xFF:
-            return self.parseMetaEvent(deltaTime, memoryMap)
-        elif self.runningStatus >= 0x80:
-            return self.parseChannelEvent(deltaTime, self.runningStatus, memoryMap)
-        elif self.runningStatus == 0xF0 or self.runningStatus == 0xF7:
-            return self.parseSysExEvent(deltaTime, memoryMap)
+        if runningStatus == 0xFF:
+            return cls.parseMetaEvent(deltaTime, memoryMap)
+        elif runningStatus >= 0x80:
+            return cls.parseChannelEvent(deltaTime, runningStatus, memoryMap)
+        elif runningStatus == 0xF0 or runningStatus == 0xF7:
+            return cls.parseSysExEvent(deltaTime, memoryMap)
 
-    def parseChannelEvent(self, deltaTime, status, memoryMap):
+    @classmethod
+    def parseChannelEvent(cls, deltaTime, status, memoryMap):
         channel = status & 0xF
         eventClass = channelEventByStatus[status & 0xF0]
         event = eventClass(deltaTime, channel, memoryMap)
         return event
 
-    def parseMetaEvent(self, deltaTime, memoryMap):
+    @classmethod
+    def parseMetaEvent(cls, deltaTime, memoryMap):
         eventType = struct.unpack("B", memoryMap.read(1))[0]
         length = unpackVLQ(memoryMap)
 
@@ -275,6 +288,7 @@ class MidiTrack():
         event = eventClass(deltaTime, length, memoryMap)
         return event
 
-    def parseSysExEvent(self, deltaTime, memoryMap):
+    @classmethod
+    def parseSysExEvent(cls, deltaTime, memoryMap):
         pass
 
