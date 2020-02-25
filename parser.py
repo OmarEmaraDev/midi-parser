@@ -356,16 +356,14 @@ def parseMetaEvent(deltaTime, memoryMap):
 def parseSysExEvent(deltaTime, memoryMap):
     pass
 
-runningStatus = 0
-
-def parseEvent(memoryMap):
+def parseEvent(memoryMap, midiStatus):
     deltaTime = unpackVLQ(memoryMap)
     status = struct.unpack("B", memoryMap.read(1))[0]
     
-    global runningStatus
-    if status & 0x80: runningStatus = status
+    if status & 0x80: midiStatus.runningStatus = status
     else: memoryMap.seek(-1, SEEK_CUR)
 
+    runningStatus = midiStatus.runningStatus
     if runningStatus == 0xFF:
         return parseMetaEvent(deltaTime, memoryMap)
     elif runningStatus >= 0x80:
@@ -373,10 +371,15 @@ def parseEvent(memoryMap):
     elif runningStatus == 0xF0 or runningStatus == 0xF7:
         return parseSysExEvent(deltaTime, memoryMap)
 
+@dataclass
+class MidiStatus:
+    runningStatus: int = 0
+
 def parseEvents(memoryMap):
     events = []
+    midiStatus = MidiStatus()
     while True:
-        event = parseEvent(memoryMap)
+        event = parseEvent(memoryMap, midiStatus)
         events.append(event)
         if isinstance(event, EndOfTrackEvent): break
     return events
