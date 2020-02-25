@@ -1,5 +1,6 @@
 import mmap
 import struct
+from typing import List
 from os import SEEK_CUR
 from dataclasses import dataclass
 
@@ -339,34 +340,6 @@ def unpackVLQ(memoryMap):
         if not char & 0x80: break
     return total
 
-class MidiFile():
-    def __init__(self, midiFormat, ppqn, tracks):
-        self.format = midiFormat
-        self.ppqn = ppqn
-        self.tracks = tracks
-
-    @classmethod
-    def fromFile(cls, filePath):
-        with open(filePath, "rb") as f:
-            memoryMap = mmap.mmap(f.fileno(), 0, prot = mmap.PROT_READ)
-            midiFormat, tracksCount, ppqn = cls.parseHeader(memoryMap)
-            tracks = cls.parseTracks(tracksCount, memoryMap)
-            memoryMap.close()
-            return cls(midiFormat, ppqn, tracks)
-
-    @classmethod
-    def parseHeader(cls, memoryMap):
-        identifier = memoryMap.read(4).decode('ascii')
-        chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
-        midiFormat = struct.unpack(">H", memoryMap.read(2))[0]
-        tracksCount = struct.unpack(">H", memoryMap.read(2))[0]
-        ppqn = struct.unpack(">H", memoryMap.read(2))[0]
-        return midiFormat, tracksCount, ppqn
-
-    @classmethod
-    def parseTracks(cls, tracksCount, memoryMap):
-        return [MidiTrack.fromMemoryMap(memoryMap) for i in range(tracksCount)]
-
 runningStatus = 0
 
 class MidiTrack():
@@ -428,4 +401,31 @@ class MidiTrack():
     @classmethod
     def parseSysExEvent(cls, deltaTime, memoryMap):
         pass
+
+def parseHeader(memoryMap):
+    identifier = memoryMap.read(4).decode('ascii')
+    chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
+    midiFormat = struct.unpack(">H", memoryMap.read(2))[0]
+    tracksCount = struct.unpack(">H", memoryMap.read(2))[0]
+    ppqn = struct.unpack(">H", memoryMap.read(2))[0]
+    return midiFormat, tracksCount, ppqn
+
+def parseTracks(memoryMap, tracksCount):
+    return [MidiTrack.fromMemoryMap(memoryMap) for i in range(tracksCount)]
+
+
+@dataclass
+class MidiFile:
+    midiFormat: int
+    ppqn: int
+    tracks: List[MidiTrack]
+
+    @classmethod
+    def fromFile(cls, filePath):
+        with open(filePath, "rb") as f:
+            memoryMap = mmap.mmap(f.fileno(), 0, prot = mmap.PROT_READ)
+            midiFormat, tracksCount, ppqn = parseHeader(memoryMap)
+            tracks = parseTracks(memoryMap, tracksCount)
+            memoryMap.close()
+            return cls(midiFormat, ppqn, tracks)
 
