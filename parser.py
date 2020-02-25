@@ -74,47 +74,47 @@ class SequenceNumberEvent():
 class TextEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.text = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.text = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class CopyrightEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.copyright = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.copyright = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class TrackNameEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class InstrumentNameEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class LyricEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.lyric = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.lyric = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class MarkerEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.marker = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.marker = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class CuePointEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.cuePoint = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.cuePoint = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class ProgramNameEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class DeviceNameEvent():
     def __init__(self, deltaTime, length, memoryMap):
         self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
 
 class MidiChannelPrefixEvent():
     def __init__(self, deltaTime, length, memoryMap):
