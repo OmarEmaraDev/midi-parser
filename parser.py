@@ -301,6 +301,26 @@ class SequencerEvent:
         data = struct.unpack(f"{length}s", memoryMap.read(length))[0]
         return cls(deltaTime, data)
 
+@dataclass
+class SysExEvent:
+    deltaTime: int
+    data: bytes
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        data = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        return cls(deltaTime, data)
+
+@dataclass
+class EscapeSequenceEvent:
+    deltaTime: int
+    data: bytes
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        data = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        return cls(deltaTime, data)
+
 metaEventByType = {
     0x00 : SequenceNumberEvent,
     0x01 : TextEvent,
@@ -353,8 +373,12 @@ def parseMetaEvent(deltaTime, memoryMap):
     event = eventClass.fromMemoryMap(deltaTime, length, memoryMap)
     return event
 
-def parseSysExEvent(deltaTime, memoryMap):
-    pass
+def parseSysExEvent(deltaTime, status, memoryMap):
+    length = unpackVLQ(memoryMap)
+    if status == 0xF0:
+        return SysExEvent.fromMemoryMap(deltaTime, length, memoryMap)
+    elif status == 0xF7:
+        return EscapeSequenceEvent.fromMemoryMap(deltaTime, length, memoryMap)
 
 def parseEvent(memoryMap, midiStatus):
     deltaTime = unpackVLQ(memoryMap)
@@ -369,7 +393,7 @@ def parseEvent(memoryMap, midiStatus):
     elif runningStatus >= 0x80:
         return parseChannelEvent(deltaTime, runningStatus, memoryMap)
     elif runningStatus == 0xF0 or runningStatus == 0xF7:
-        return parseSysExEvent(deltaTime, memoryMap)
+        return parseSysExEvent(deltaTime, runningStatus, memoryMap)
 
 @dataclass
 class MidiStatus:
