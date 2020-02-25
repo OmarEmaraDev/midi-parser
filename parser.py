@@ -340,67 +340,61 @@ def unpackVLQ(memoryMap):
         if not char & 0x80: break
     return total
 
+def parseChannelEvent(deltaTime, status, memoryMap):
+    channel = status & 0xF
+    eventClass = channelEventByStatus[status & 0xF0]
+    event = eventClass.fromMemoryMap(deltaTime, channel, memoryMap)
+    return event
+
+def parseMetaEvent(deltaTime, memoryMap):
+    eventType = struct.unpack("B", memoryMap.read(1))[0]
+    length = unpackVLQ(memoryMap)
+    eventClass = metaEventByType[eventType]
+    event = eventClass.fromMemoryMap(deltaTime, length, memoryMap)
+    return event
+
+def parseSysExEvent(deltaTime, memoryMap):
+    pass
+
 runningStatus = 0
 
-class MidiTrack():
-    def __init__(self, events):
-        self.events = events
+def parseEvent(memoryMap):
+    deltaTime = unpackVLQ(memoryMap)
+    status = struct.unpack("B", memoryMap.read(1))[0]
+    
+    global runningStatus
+    if status & 0x80: runningStatus = status
+    else: memoryMap.seek(-1, SEEK_CUR)
+
+    if runningStatus == 0xFF:
+        return parseMetaEvent(deltaTime, memoryMap)
+    elif runningStatus >= 0x80:
+        return parseChannelEvent(deltaTime, runningStatus, memoryMap)
+    elif runningStatus == 0xF0 or runningStatus == 0xF7:
+        return parseSysExEvent(deltaTime, memoryMap)
+
+def parseEvents(memoryMap):
+    events = []
+    while True:
+        event = parseEvent(memoryMap)
+        events.append(event)
+        if isinstance(event, EndOfTrackEvent): break
+    return events
+
+def parseTrackHeader(memoryMap):
+    identifier = memoryMap.read(4).decode('ascii')
+    chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
+    return chunkLength
+
+@dataclass
+class MidiTrack:
+    events: List
 
     @classmethod
     def fromMemoryMap(cls, memoryMap):
-        chunkLength = cls.parseHeader(memoryMap)
-        events = cls.parseEvents(memoryMap)
+        chunkLength = parseTrackHeader(memoryMap)
+        events = parseEvents(memoryMap)
         return cls(events)
-
-    @classmethod
-    def parseHeader(cls, memoryMap):
-        identifier = memoryMap.read(4).decode('ascii')
-        chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
-        return chunkLength
-
-    @classmethod
-    def parseEvents(cls, memoryMap):
-        events = []
-        while True:
-            event = cls.parseEvent(memoryMap)
-            events.append(event)
-            if isinstance(event, EndOfTrackEvent): break
-        return events
-
-    @classmethod
-    def parseEvent(cls, memoryMap):
-        deltaTime = unpackVLQ(memoryMap)
-        status = struct.unpack("B", memoryMap.read(1))[0]
-        
-        global runningStatus
-        if status & 0x80: runningStatus = status
-        else: memoryMap.seek(-1, SEEK_CUR)
-
-        if runningStatus == 0xFF:
-            return cls.parseMetaEvent(deltaTime, memoryMap)
-        elif runningStatus >= 0x80:
-            return cls.parseChannelEvent(deltaTime, runningStatus, memoryMap)
-        elif runningStatus == 0xF0 or runningStatus == 0xF7:
-            return cls.parseSysExEvent(deltaTime, memoryMap)
-
-    @classmethod
-    def parseChannelEvent(cls, deltaTime, status, memoryMap):
-        channel = status & 0xF
-        eventClass = channelEventByStatus[status & 0xF0]
-        event = eventClass.fromMemoryMap(deltaTime, channel, memoryMap)
-        return event
-
-    @classmethod
-    def parseMetaEvent(cls, deltaTime, memoryMap):
-        eventType = struct.unpack("B", memoryMap.read(1))[0]
-        length = unpackVLQ(memoryMap)
-        eventClass = metaEventByType[eventType]
-        event = eventClass.fromMemoryMap(deltaTime, length, memoryMap)
-        return event
-
-    @classmethod
-    def parseSysExEvent(cls, deltaTime, memoryMap):
-        pass
 
 def parseHeader(memoryMap):
     identifier = memoryMap.read(4).decode('ascii')
