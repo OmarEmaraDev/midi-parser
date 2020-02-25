@@ -50,8 +50,7 @@ class ProgramEvent():
     def __init__(self, deltaTime, channel, memoryMap):
         self.deltaTime = deltaTime
         self.channel = channel
-        self.note = struct.unpack("B", memoryMap.read(1))[0]
-        self.velocity = struct.unpack("B", memoryMap.read(1))[0]
+        self.program = struct.unpack("B", memoryMap.read(1))[0]
 
 class ChannelPressureEvent():
     def __init__(self, deltaTime, channel, memoryMap):
