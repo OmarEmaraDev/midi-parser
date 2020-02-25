@@ -203,25 +203,32 @@ def unpackVLQ(memoryMap):
     return total
 
 class MidiFile():
-    def __init__(self, filePath):
-        self.tracks = []
+    def __init__(self, midiFormat, ppqn, tracks):
+        self.format = midiFormat
+        self.ppqn = ppqn
+        self.tracks = tracks
 
+    @classmethod
+    def fromFile(cls, filePath):
         with open(filePath, "rb") as f:
             memoryMap = mmap.mmap(f.fileno(), 0, prot = mmap.PROT_READ)
-            self.parseHeader(memoryMap)
-            self.parseTracks(memoryMap)
+            midiFormat, tracksCount, ppqn = cls.parseHeader(memoryMap)
+            tracks = cls.parseTracks(tracksCount, memoryMap)
             memoryMap.close()
+            return cls(midiFormat, ppqn, tracks)
 
-    def parseHeader(self, memoryMap):
+    @classmethod
+    def parseHeader(cls, memoryMap):
         identifier = memoryMap.read(4).decode('ascii')
         chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
-        self.format = struct.unpack(">H", memoryMap.read(2))[0]
-        self.tracksCount = struct.unpack(">H", memoryMap.read(2))[0]
-        self.ppqn = struct.unpack(">H", memoryMap.read(2))[0]
+        midiFormat = struct.unpack(">H", memoryMap.read(2))[0]
+        tracksCount = struct.unpack(">H", memoryMap.read(2))[0]
+        ppqn = struct.unpack(">H", memoryMap.read(2))[0]
+        return midiFormat, tracksCount, ppqn
 
-    def parseTracks(self, memoryMap):
-        for i in range(self.tracksCount):
-            self.tracks.append(MidiTrack(memoryMap))
+    @classmethod
+    def parseTracks(cls, tracksCount, memoryMap):
+        return [MidiTrack(memoryMap) for i in range(tracksCount)]
 
 class MidiTrack():
     def __init__(self, memoryMap):
