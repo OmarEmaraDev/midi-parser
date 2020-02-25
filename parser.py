@@ -1,6 +1,7 @@
-import os
 import mmap
 import struct
+from os import SEEK_CUR
+from dataclasses import dataclass
 
 # A brief description of the MIDI specification:
 #
@@ -18,149 +19,286 @@ import struct
 #
 # http://midi.teragonaudio.com/tech/midispec/run.htm
 
-class NoteOnEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.note = struct.unpack("B", memoryMap.read(1))[0]
-        self.velocity = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class NoteOnEvent:
+    deltaTime: int
+    channel: int
+    note: int
+    velocity: int
 
-class NoteOffEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.note = struct.unpack("B", memoryMap.read(1))[0]
-        self.velocity = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        note = struct.unpack("B", memoryMap.read(1))[0]
+        velocity = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, note, velocity)
 
-class NotePressureEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.note = struct.unpack("B", memoryMap.read(1))[0]
-        self.pressure = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class NoteOffEvent:
+    deltaTime: int
+    channel: int
+    note: int
+    velocity: int
 
-class ControllerEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.controller = struct.unpack("B", memoryMap.read(1))[0]
-        self.value = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        note = struct.unpack("B", memoryMap.read(1))[0]
+        velocity = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, note, velocity)
 
-class ProgramEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.program = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class NotePressureEvent:
+    deltaTime: int
+    channel: int
+    note: int
+    pressure: int
 
-class ChannelPressureEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.pressure = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        note = struct.unpack("B", memoryMap.read(1))[0]
+        pressure = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, note, pressure)
 
-class PitchBendEvent():
-    def __init__(self, deltaTime, channel, memoryMap):
-        self.deltaTime = deltaTime
-        self.channel = channel
-        self.lsb = struct.unpack("B", memoryMap.read(1))[0]
-        self.msb = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class ControllerEvent:
+    deltaTime: int
+    channel: int
+    controller: int
+    value: int
 
-class SequenceNumberEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.sequenceNumber = struct.unpack(">H", memoryMap.read(2))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        controller = struct.unpack("B", memoryMap.read(1))[0]
+        value = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, controller, value)
 
-class TextEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.text = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+@dataclass
+class ProgramEvent:
+    deltaTime: int
+    channel: int
+    program: int
 
-class CopyrightEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.copyright = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        program = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, program)
 
-class TrackNameEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+@dataclass
+class ChannelPressureEvent:
+    deltaTime: int
+    channel: int
+    pressure: int
 
-class InstrumentNameEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        pressure = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, pressure)
 
-class LyricEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.lyric = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+@dataclass
+class PitchBendEvent:
+    deltaTime: int
+    channel: int
+    lsb: int
+    msb: int
 
-class MarkerEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.marker = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, channel, memoryMap):
+        lsb = struct.unpack("B", memoryMap.read(1))[0]
+        msb = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, channel, lsb, msb)
 
-class CuePointEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.cuePoint = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+@dataclass
+class SequenceNumberEvent:
+    deltaTime: int
+    sequenceNumber: int
 
-class ProgramNameEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        sequenceNumber = struct.unpack(">H", memoryMap.read(2))[0]
+        return cls(deltaTime, sequenceNumber)
 
-class DeviceNameEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+@dataclass
+class TextEvent:
+    deltaTime: int
+    text: str
 
-class MidiChannelPrefixEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.prefix = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        text = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, text)
 
-class MidiPortEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.port = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class CopyrightEvent:
+    deltaTime: int
+    copyright: str
 
-class EndOfTrackEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        copyright = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, copyright)
 
-class TempoEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.tempo = struct.unpack(">I", b'\x00' + memoryMap.read(3))[0]
+@dataclass
+class TrackNameEvent:
+    deltaTime: int
+    name: str
 
-class SmpteOffsetEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.hours = struct.unpack("B", memoryMap.read(1))[0]
-        self.minutes = struct.unpack("B", memoryMap.read(1))[0]
-        self.seconds = struct.unpack("B", memoryMap.read(1))[0]
-        self.fps = struct.unpack("B", memoryMap.read(1))[0]
-        self.fractionalFrames = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, name)
 
-class TimeSignatureEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.numerator = struct.unpack("B", memoryMap.read(1))[0]
-        self.denominator = struct.unpack("B", memoryMap.read(1))[0]
-        self.clocksPerClick = struct.unpack("B", memoryMap.read(1))[0]
-        self.thirtySecondPer24Clocks = struct.unpack("B", memoryMap.read(1))[0]
+@dataclass
+class InstrumentNameEvent:
+    deltaTime: int
+    name: str
 
-class KeySignatureEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.flatsSharps = struct.unpack("B", memoryMap.read(1))[0]
-        self.majorMinor = struct.unpack("B", memoryMap.read(1))[0]
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, name)
 
-class SequencerEvent():
-    def __init__(self, deltaTime, length, memoryMap):
-        self.deltaTime = deltaTime
-        self.data = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+@dataclass
+class LyricEvent:
+    deltaTime: int
+    lyric: str
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        lyric = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, lyric)
+
+@dataclass
+class MarkerEvent:
+    deltaTime: int
+    marker: str
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        marker = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, marker)
+
+@dataclass
+class CuePointEvent:
+    deltaTime: int
+    cuePoint: str
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        cuePoint = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, cuePoint)
+
+@dataclass
+class ProgramNameEvent:
+    deltaTime: int
+    name: str
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, name)
+
+@dataclass
+class DeviceNameEvent:
+    deltaTime: int
+    name: str
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        name = struct.unpack(f"{length}s", memoryMap.read(length))[0].decode("ascii")
+        return cls(deltaTime, name)
+
+@dataclass
+class MidiChannelPrefixEvent:
+    deltaTime: int
+    prefix: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        prefix = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, prefix)
+
+@dataclass
+class MidiPortEvent:
+    deltaTime: int
+    port: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        port = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, port)
+
+@dataclass
+class EndOfTrackEvent:
+    deltaTime: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        return cls(deltaTime)
+
+@dataclass
+class TempoEvent:
+    deltaTime: int
+    tempo: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        tempo = struct.unpack(">I", b"\x00" + memoryMap.read(3))[0]
+        return cls(deltaTime, tempo)
+
+@dataclass
+class SmpteOffsetEvent:
+    deltaTime: int
+    hours: int
+    minutes: int
+    seconds: int
+    fps: int
+    fractionalFrames: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        hours = struct.unpack("B", memoryMap.read(1))[0]
+        minutes = struct.unpack("B", memoryMap.read(1))[0]
+        seconds = struct.unpack("B", memoryMap.read(1))[0]
+        fps = struct.unpack("B", memoryMap.read(1))[0]
+        fractionalFrames = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, hours, minutes, seconds, fps, fractionalFrames)
+
+@dataclass
+class TimeSignatureEvent:
+    deltaTime: int
+    numerator: int
+    denominator: int
+    clocksPerClick: int
+    thirtySecondPer24Clocks: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        numerator = struct.unpack("B", memoryMap.read(1))[0]
+        denominator = struct.unpack("B", memoryMap.read(1))[0]
+        clocksPerClick = struct.unpack("B", memoryMap.read(1))[0]
+        thirtySecondPer24Clocks = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, numerator, denominator, clocksPerClick, thirtySecondPer24Clocks)
+
+@dataclass
+class KeySignatureEvent:
+    deltaTime: int
+    flatsSharps: int
+    majorMinor: int
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        flatsSharps = struct.unpack("B", memoryMap.read(1))[0]
+        majorMinor = struct.unpack("B", memoryMap.read(1))[0]
+        return cls(deltaTime, flatsSharps, majorMinor)
+
+@dataclass
+class SequencerEvent:
+    deltaTime: int
+    data: bytes
+
+    @classmethod
+    def fromMemoryMap(cls, deltaTime, length, memoryMap):
+        data = struct.unpack(f"{length}s", memoryMap.read(length))[0]
+        return cls(deltaTime, data)
 
 metaEventByType = {
     0x00 : SequenceNumberEvent,
@@ -263,7 +401,7 @@ class MidiTrack():
         
         global runningStatus
         if status & 0x80: runningStatus = status
-        else: memoryMap.seek(-1, os.SEEK_CUR)
+        else: memoryMap.seek(-1, SEEK_CUR)
 
         if runningStatus == 0xFF:
             return cls.parseMetaEvent(deltaTime, memoryMap)
@@ -276,16 +414,15 @@ class MidiTrack():
     def parseChannelEvent(cls, deltaTime, status, memoryMap):
         channel = status & 0xF
         eventClass = channelEventByStatus[status & 0xF0]
-        event = eventClass(deltaTime, channel, memoryMap)
+        event = eventClass.fromMemoryMap(deltaTime, channel, memoryMap)
         return event
 
     @classmethod
     def parseMetaEvent(cls, deltaTime, memoryMap):
         eventType = struct.unpack("B", memoryMap.read(1))[0]
         length = unpackVLQ(memoryMap)
-
         eventClass = metaEventByType[eventType]
-        event = eventClass(deltaTime, length, memoryMap)
+        event = eventClass.fromMemoryMap(deltaTime, length, memoryMap)
         return event
 
     @classmethod
