@@ -236,11 +236,10 @@ class MidiTrack():
         self.chunkLength = struct.unpack(">I", memoryMap.read(4))[0]
 
     def parseEvents(self, memoryMap):
-        remainingBytes = self.chunkLength
-        while remainingBytes:
-            pointerPosition = memoryMap.tell()
-            self.parseEvent(memoryMap)
-            remainingBytes -= memoryMap.tell() - pointerPosition
+        while True:
+            event = self.parseEvent(memoryMap)
+            self.events.append(event)
+            if isinstance(event, EndOfTrackEvent): break
 
     def parseEvent(self, memoryMap):
         deltaTime = unpackVLQ(memoryMap)
@@ -250,17 +249,17 @@ class MidiTrack():
         else: memoryMap.seek(-1, os.SEEK_CUR)
 
         if self.runningStatus == 0xFF:
-            self.parseMetaEvent(deltaTime, memoryMap)
+            return self.parseMetaEvent(deltaTime, memoryMap)
         elif self.runningStatus >= 0x80:
-            self.parseChannelEvent(deltaTime, self.runningStatus, memoryMap)
+            return self.parseChannelEvent(deltaTime, self.runningStatus, memoryMap)
         elif self.runningStatus == 0xF0 or self.runningStatus == 0xF7:
-            self.parseSysExEvent(deltaTime, memoryMap)
+            return self.parseSysExEvent(deltaTime, memoryMap)
 
     def parseChannelEvent(self, deltaTime, status, memoryMap):
         channel = status & 0xF
         eventClass = channelEventByStatus[status & 0xF0]
         event = eventClass(deltaTime, channel, memoryMap)
-        self.events.append(event)
+        return event
 
     def parseMetaEvent(self, deltaTime, memoryMap):
         eventType = struct.unpack("B", memoryMap.read(1))[0]
@@ -268,7 +267,7 @@ class MidiTrack():
 
         eventClass = metaEventByType[eventType]
         event = eventClass(deltaTime, length, memoryMap)
-        self.events.append(event)
+        return event
 
     def parseSysExEvent(self, deltaTime, memoryMap):
         pass
