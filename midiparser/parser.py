@@ -57,6 +57,8 @@ def parseChannelEvent(deltaTime, status, memoryMap):
     channel = status & 0xF
     eventClass = channelEventByStatus[status & 0xF0]
     event = eventClass.fromMemoryMap(deltaTime, channel, memoryMap)
+    if isinstance(event, NoteOnEvent) and event.velocity == 0:
+        return NoteOffEvent(deltaTime, channel, event.note, 0)
     return event
 
 def parseMetaEvent(deltaTime, memoryMap):
