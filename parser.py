@@ -5,20 +5,13 @@ from os import SEEK_CUR
 from dataclasses import dataclass
 
 # A brief description of the MIDI specification:
-#
-# http://www.somascape.org/midi/tech/spec.html
-#
+# - http://www.somascape.org/midi/tech/spec.html
 # A brief description of the MIDI File specification:
-#
-# http://www.somascape.org/midi/tech/mfile.html
-#
+# - http://www.somascape.org/midi/tech/mfile.html
 # A MIDI Binary Template:
-#
-# https://www.sweetscape.com/010editor/repository/files/MIDI.bt
-#
+# - https://www.sweetscape.com/010editor/repository/files/MIDI.bt
 # A description of Running Status:
-#
-# http://midi.teragonaudio.com/tech/midispec/run.htm
+# - http://midi.teragonaudio.com/tech/midispec/run.htm
 
 @dataclass
 class NoteOnEvent:
@@ -380,14 +373,14 @@ def parseSysExEvent(deltaTime, status, memoryMap):
     elif status == 0xF7:
         return EscapeSequenceEvent.fromMemoryMap(deltaTime, length, memoryMap)
 
-def parseEvent(memoryMap, midiStatus):
+def parseEvent(memoryMap, parseState):
     deltaTime = unpackVLQ(memoryMap)
     status = struct.unpack("B", memoryMap.read(1))[0]
     
-    if status & 0x80: midiStatus.runningStatus = status
+    if status & 0x80: parseState.runningStatus = status
     else: memoryMap.seek(-1, SEEK_CUR)
 
-    runningStatus = midiStatus.runningStatus
+    runningStatus = parseState.runningStatus
     if runningStatus == 0xFF:
         return parseMetaEvent(deltaTime, memoryMap)
     elif runningStatus >= 0x80:
@@ -396,14 +389,14 @@ def parseEvent(memoryMap, midiStatus):
         return parseSysExEvent(deltaTime, runningStatus, memoryMap)
 
 @dataclass
-class MidiStatus:
+class MidiParseState:
     runningStatus: int = 0
 
 def parseEvents(memoryMap):
     events = []
-    midiStatus = MidiStatus()
+    parseState = MidiParseState()
     while True:
-        event = parseEvent(memoryMap, midiStatus)
+        event = parseEvent(memoryMap, parseState)
         events.append(event)
         if isinstance(event, EndOfTrackEvent): break
     return events
@@ -433,7 +426,6 @@ def parseHeader(memoryMap):
 
 def parseTracks(memoryMap, tracksCount):
     return [MidiTrack.fromMemoryMap(memoryMap) for i in range(tracksCount)]
-
 
 @dataclass
 class MidiFile:
