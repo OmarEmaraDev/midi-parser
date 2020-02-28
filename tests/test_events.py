@@ -308,3 +308,28 @@ class TestMetaEvents:
 
         assert referenceEvent == parsedEvent
 
+class TestSysExEvents:
+    def test_SysExEvent(self):
+        deltaTime = 100
+        data = b"\x00\x32\xA5"
+        length = len(data)
+
+        referenceEvent = SysExEvent(deltaTime, data)
+
+        memoryMap = BytesIO(data)
+        parsedEvent = SysExEvent.fromMemoryMap(deltaTime, length, memoryMap)
+
+        assert referenceEvent == parsedEvent
+
+    def test_EscapeSequenceEvent(self):
+        deltaTime = 100
+        data = b"\x00\x32\xA5"
+        length = len(data)
+
+        referenceEvent = EscapeSequenceEvent(deltaTime, data)
+
+        memoryMap = BytesIO(data)
+        parsedEvent = EscapeSequenceEvent.fromMemoryMap(deltaTime, length, memoryMap)
+
+        assert referenceEvent == parsedEvent
+
