@@ -138,7 +138,7 @@ class MidiFile:
     @classmethod
     def fromFile(cls, filePath):
         with open(filePath, "rb") as f:
-            memoryMap = mmap.mmap(f.fileno(), 0, prot = mmap.PROT_READ)
+            memoryMap = mmap.mmap(f.fileno(), 0, access = mmap.ACCESS_READ)
             midiFormat, tracksCount, ppqn = parseHeader(memoryMap)
             tracks = parseTracks(memoryMap, tracksCount)
             memoryMap.close()
